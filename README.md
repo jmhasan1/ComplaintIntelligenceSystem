@@ -525,3 +525,9 @@ Potential production-oriented extensions include:
 This project was developed for the **AIVOA Round 1 AI Product Engineer** technical challenge.
 
 The implementation follows the required workflow of using an AI Copilot to populate and update the customer complaint form rather than requiring the user to manually enter the complaint information.
+
+## 🎥 Video Walkthrough
+
+A short walkthrough demonstrating the end-to-end AIVOA Complaint Intelligence workflow, including complaint extraction, multi-turn editing, PDF processing, duplicate detection, risk assessment, and QMS ledger persistence.
+
+**Loom:** [Watch the project walkthrough](https://www.loom.com/share/bfc40959db424e958b942657b390949d)
