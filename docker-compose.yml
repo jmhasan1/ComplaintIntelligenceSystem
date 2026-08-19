@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: aivoa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aivoa
+      POSTGRES_USER: aivoa
+      POSTGRES_PASSWORD: aivoa
+    ports:
+      - "5432:5432"
+    volumes:
+      - aivoa_pgdata:/var/lib/postgresql/data
+
+volumes:
+  aivoa_pgdata:
