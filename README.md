@@ -1,7 +1,6 @@
-# Complaint Intelligence System
+# MeddiQA-Complaint Intelligence System
 
 An AI-powered pharmaceutical customer complaint intake, triage, editing, document-extraction, duplicate-detection, and QMS persistence prototype. 
-<!-- built for the ** Round 1 AI Product Engineer challenge**. -->
 
 The system allows a user to interact with a complaint-management workflow through natural language instead of manually filling the complaint form.
 
@@ -520,15 +519,3 @@ Potential production-oriented extensions include:
 10. Production document/OCR processing
 
 ---
-<!-- 
-#  Challenge
-
-This project was developed for the ** Round 1 AI Product Engineer** technical challenge.
-
-The implementation follows the required workflow of using an AI Copilot to populate and update the customer complaint form rather than requiring the user to manually enter the complaint information. -->
-
-<!-- ## 🎥 Video Walkthrough
-
-A short walkthrough demonstrating the end-to-end  Complaint Intelligence workflow, including complaint extraction, multi-turn editing, PDF processing, duplicate detection, risk assessment, and QMS ledger persistence. -->
-
-<!-- **Loom:** [Watch the project walkthrough](https://www.loom.com/share/bfc40959db424e958b942657b390949d) -->
