@@ -1,6 +1,7 @@
-# AIVOA Complaint Intelligence System
+# Complaint Intelligence System
 
-An AI-powered pharmaceutical customer complaint intake, triage, editing, document-extraction, duplicate-detection, and QMS persistence prototype built for the **AIVOA Round 1 AI Product Engineer challenge**.
+An AI-powered pharmaceutical customer complaint intake, triage, editing, document-extraction, duplicate-detection, and QMS persistence prototype. 
+<!-- built for the ** Round 1 AI Product Engineer challenge**. -->
 
 The system allows a user to interact with a complaint-management workflow through natural language instead of manually filling the complaint form.
 
@@ -150,7 +151,7 @@ PostgreSQL therefore acts as the persistent source of truth for committed compla
 
 # Technology Stack
 
-The implementation follows the mandatory technology stack specified in the AIVOA assignment.
+<!-- The implementation follows the mandatory technology stack specified in the  assignment. -->
 
 | Layer                | Technology       |
 | -------------------- | ---------------- |
@@ -211,7 +212,7 @@ The implementation follows the mandatory technology stack specified in the AIVOA
 # Project Structure
 
 ```text
-AIVOA-Complaint-Intelligence-System/
+MeddiQAComplaint-Intelligence-System/
 │
 ├── backend/
 │   ├── app/
@@ -493,7 +494,7 @@ The duplicate detection workflow was also tested against a previously committed 
 
 # Scope and Limitations
 
-This project is a prototype created for the AIVOA technical challenge.
+This project is a prototype created for the  technical challenge.
 
 It is **not** a validated pharmaceutical GxP / 21 CFR Part 11 production system.
 
@@ -519,15 +520,15 @@ Potential production-oriented extensions include:
 10. Production document/OCR processing
 
 ---
+<!-- 
+#  Challenge
 
-# AIVOA Challenge
+This project was developed for the ** Round 1 AI Product Engineer** technical challenge.
 
-This project was developed for the **AIVOA Round 1 AI Product Engineer** technical challenge.
-
-The implementation follows the required workflow of using an AI Copilot to populate and update the customer complaint form rather than requiring the user to manually enter the complaint information.
+The implementation follows the required workflow of using an AI Copilot to populate and update the customer complaint form rather than requiring the user to manually enter the complaint information. -->
 
 <!-- ## 🎥 Video Walkthrough
 
-A short walkthrough demonstrating the end-to-end AIVOA Complaint Intelligence workflow, including complaint extraction, multi-turn editing, PDF processing, duplicate detection, risk assessment, and QMS ledger persistence. -->
+A short walkthrough demonstrating the end-to-end  Complaint Intelligence workflow, including complaint extraction, multi-turn editing, PDF processing, duplicate detection, risk assessment, and QMS ledger persistence. -->
 
 <!-- **Loom:** [Watch the project walkthrough](https://www.loom.com/share/bfc40959db424e958b942657b390949d) -->

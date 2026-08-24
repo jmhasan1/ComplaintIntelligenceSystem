@@ -1,5 +1,5 @@
 
-"""PostgreSQL persistence layer for the AIVOA take-home.
+"""PostgreSQL persistence layer for the take-home.
 
 The graph remains storage-agnostic: it receives a ComplaintState and returns a
 ComplaintState. This module persists that state between requests and stores
@@ -19,7 +19,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://aivoa:aivoa@localhost:5432/aivoa",
+    "postgresql+psycopg://MeddiQA:MeddiQA@localhost:5432/MeddiQA",
 )
 
 # Render JSON in PostgreSQL as JSONB. A SQLite URL can still be used for quick

@@ -1,5 +1,5 @@
 """
-LLM provider configuration for the AIVOA Complaint Intelligence System.
+LLM provider configuration for the MeddiQA Complaint Intelligence System.
 
 The rest of the application interacts with Groq through this module rather
 than depending directly on provider-specific configuration.

@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the AIVOA Complaint Intelligence Workbench."""
+"""FastAPI entrypoint for the Complaint Intelligence Workbench."""
 
 from dotenv import load_dotenv
 
@@ -14,7 +14,7 @@ from .graph import complaint_graph
 from .document_parser import extract_text_from_upload
 from .database import init_db, load_state, save_state, commit_state
 
-app = FastAPI(title="AIVOA Complaint Intelligence API", version="1.0.0")
+app = FastAPI(title="Complaint Intelligence API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -117,9 +117,9 @@ async def get_form(session_id: str):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "aivoa-complaint-intelligence"}
+    return {"status": "ok", "service": "MeddiQA-complaint-intelligence"}
 
 
 @app.get("/api/health")
 async def api_health():
-    return {"status": "ok", "service": "aivoa-complaint-intelligence"}
+    return {"status": "ok", "service": "MeddiQA-complaint-intelligence"}

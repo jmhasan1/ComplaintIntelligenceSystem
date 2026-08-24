@@ -1,5 +1,5 @@
 [project]
-name = "aivoa-complaint-intelligence-system"
+name = "MeddiQA-complaint-intelligence-system"
 version = "0.1.0"
 description = "AI-powered pharmaceutical customer complaint management and intelligence system"
 readme = "README.md"
