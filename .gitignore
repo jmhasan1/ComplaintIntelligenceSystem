@@ -145,3 +145,5 @@ htmlcov/
 # *.jpg
 # *.jpeg
 
+
+uv.lock
