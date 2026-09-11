@@ -12,7 +12,7 @@ from uuid import uuid4
 from .schemas import ComplaintState, ChatResponse
 from .graph import complaint_graph
 from .document_parser import extract_text_from_upload
-from .database import init_db, load_state, save_state, commit_state
+from .database import init_db, load_state, save_state, commit_state, reset_state
 
 app = FastAPI(title="Complaint Intelligence API", version="1.0.0")
 
@@ -99,6 +99,8 @@ async def commit_complaint(session_id: str):
     state = _get_or_create_session(session_id)
     if state.is_empty():
         raise HTTPException(400, "No complaint is ready to commit")
+    if state.review_status != "reviewed":
+        raise HTTPException(409, "Human review is required before saving the complaint")
 
     complaint_id = f"CC-{uuid4().hex[:10].upper()}"
     commit_state(session_id, state, complaint_id)
@@ -108,6 +110,25 @@ async def commit_complaint(session_id: str):
         "complaint_id": complaint_id,
         "message": "Complaint committed to the QMS ledger.",
     }
+
+
+@app.post("/api/review/{session_id}")
+async def mark_reviewed(session_id: str):
+    state = _get_or_create_session(session_id)
+    if state.is_empty():
+        raise HTTPException(400, "No complaint is ready for review")
+    if state.validation_errors:
+        raise HTTPException(409, "Resolve validation errors before marking the complaint reviewed")
+    state.review_required = False
+    state.review_status = "reviewed"
+    save_state(session_id, state)
+    return {"status": "reviewed", "message": "Complaint marked reviewed and ready to save."}
+
+
+@app.post("/api/reset/{session_id}")
+async def reset_complaint(session_id: str):
+    reset_state(session_id)
+    return {"status": "reset", "message": "Complaint session reset."}
 
 
 @app.get("/api/form/{session_id}", response_model=ComplaintState)
