@@ -19,18 +19,23 @@ non-None fields from the diff on top of the existing state. This means:
 Graph shape:
 
     START -> classify_intent -> [log_complaint | edit_complaint | extract_document]
-                                          |
-                                          v
-                                     merge_state
-                                          |
-                                          v
-                              completeness_check
-                                          |
-                                          v
-                                duplicate_check
-                                          |
-                                          v
-                                  compose_reply -> END
+              |                   |
+              |                   v
+              |              merge_state
+              |                   |
+              |                   v
+              |        deterministic_validation
+              |                   |
+              |                   v
+              |          completeness_check
+              |                   |
+              |                   v
+              |            duplicate_check
+              |                   |
+              |                   v
+              |             compose_reply -> END
+              |
+              +-> qa -> END (read-only; no form mutation)
 """
 
 from __future__ import annotations
@@ -41,6 +46,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from .schemas import ComplaintState, ComplaintStateUpdate, RiskAssessment
+from .validation import validate_complaint
 from .llm import get_llm
 from .duplicate_detection import duplicate_store
 from .database import list_committed_complaints
@@ -52,6 +58,8 @@ from .prompts import (
     CHAT_REPLY_LOG_TEMPLATE,
     CHAT_REPLY_EDIT_TEMPLATE,
     CHAT_REPLY_EXTRACT_TEMPLATE,
+    QA_SYSTEM_PROMPT,
+    CHAT_REPLY_QA_TEMPLATE,
 )
 
 
@@ -60,7 +68,7 @@ class GraphState(TypedDict, total=False):
     doc_text: Optional[str]
     doc_filename: Optional[str]
     form_state: ComplaintState
-    intent: Literal["log", "edit", "extract"]
+    intent: Literal["log", "edit", "extract", "qa"]
     diff: ComplaintStateUpdate
     updated_fields: List[str]
     reply: str
@@ -101,8 +109,7 @@ def _apply_diff(state: ComplaintState, diff: ComplaintStateUpdate) -> tuple[Comp
     form_fields = {
         "complaint_source", "customer_name", "product_name", "product_strength",
         "batch_number", "affected_quantity", "manufacturing_date", "expiry_date",
-        "originating_site_block", "impacted_npm", "complaint_category",
-        "complaint_description",
+        "complaint_type", "complaint_date", "complaint_description", "priority",
     }
     risk_fields = {
         "severity": "severity",
@@ -124,6 +131,11 @@ def _apply_diff(state: ComplaintState, diff: ComplaintStateUpdate) -> tuple[Comp
             setattr(new_state.risk_assessment, risk_attr, value)
             updated_fields.append(diff_field)
 
+    confidence = diff_dict.get("field_confidence") or {}
+    for field_name, score in confidence.items():
+        if field_name in _FIELD_LABELS and isinstance(score, (int, float)):
+            new_state.field_confidence[field_name] = max(0.0, min(1.0, float(score)))
+
     return new_state, updated_fields
 
 
@@ -136,11 +148,11 @@ _FIELD_LABELS = {
     "affected_quantity": "Affected Quantity",
     "manufacturing_date": "Manufacturing Date",
     "expiry_date": "Expiry Date",
-    "originating_site_block": "Originating Site Block",
-    "impacted_npm": "Impacted NPM",
-    "complaint_category": "Complaint Category",
+    "complaint_type": "Complaint Type",
+    "complaint_date": "Complaint Date",
     "complaint_description": "Complaint Description",
-    "severity": "Severity",
+    "severity": "Initial Severity",
+    "priority": "Priority",
     "suggested_next_action": "Suggested Next Action",
     "initial_risk_assessment": "Initial Risk Assessment",
     "capa_recommendation": "CAPA Recommendation",
@@ -165,7 +177,12 @@ def classify_intent(state: GraphState) -> GraphState:
         message=state["message"],
     )
     result = llm.invoke([HumanMessage(content=prompt)]).content.strip().lower()
-    intent = "edit" if "edit" in result else "log"
+    if "qa" in result:
+        intent = "qa"
+    elif "edit" in result:
+        intent = "edit"
+    else:
+        intent = "log"
     return {**state, "intent": intent}
 
 
@@ -189,9 +206,39 @@ def extract_document_node(state: GraphState) -> GraphState:
     return {**state, "diff": diff}
 
 
+def qa_node(state: GraphState) -> GraphState:
+    """Answer questions about the current complaint without mutating it."""
+    current = state["form_state"].model_dump()
+    prompt = (
+        f"CURRENT COMPLAINT STATE:\n{json.dumps(current, indent=2)}\n\n"
+        f"USER QUESTION:\n{state['message']}"
+    )
+    llm = get_llm(structured=False, temperature=0.0)
+    answer = llm.invoke(
+        [SystemMessage(content=QA_SYSTEM_PROMPT), HumanMessage(content=prompt)]
+    ).content.strip()
+    return {**state, "reply": answer, "updated_fields": []}
+
+
 def merge_state_node(state: GraphState) -> GraphState:
     new_state, updated_fields = _apply_diff(state["form_state"], state["diff"])
     return {**state, "form_state": new_state, "updated_fields": updated_fields}
+
+
+def deterministic_validation_node(state: GraphState) -> GraphState:
+    """Validate LLM output with deterministic business rules."""
+
+    form_state = state["form_state"]
+
+    form_state.validation_errors = validate_complaint(form_state)
+
+    form_state.review_required = True
+    form_state.review_status = "needs_review"
+
+    return {
+        **state,
+        "form_state": form_state,
+    }
 
 
 def completeness_check_node(state: GraphState) -> GraphState:
@@ -203,7 +250,7 @@ def completeness_check_node(state: GraphState) -> GraphState:
         "product_strength": "Product Strength / Grade",
         "batch_number": "Batch / Lot Number",
         "affected_quantity": "Affected Quantity",
-        "complaint_category": "Complaint Category",
+        "complaint_type": "Complaint Type",
         "complaint_description": "Complaint Description",
     }
     missing = [
@@ -252,6 +299,8 @@ def compose_reply_node(state: GraphState) -> GraphState:
     intent = state["intent"]
     updated_fields = state.get("updated_fields", [])
 
+    if intent == "qa":
+        return {**state, "reply": CHAT_REPLY_QA_TEMPLATE.format(answer=state.get("reply", ""))}
     if intent == "edit":
         labels = [f'"{_FIELD_LABELS.get(f, f)}"' for f in updated_fields]
         fields_str = ", ".join(labels) if labels else "the requested details"
@@ -277,9 +326,11 @@ def build_graph():
     graph.add_node("classify_intent", classify_intent)
     graph.add_node("log_complaint", log_complaint_node)
     graph.add_node("edit_complaint", edit_complaint_node)
+    graph.add_node("qa", qa_node)
     graph.add_node("extract_document", extract_document_node)
     graph.add_node("merge_state", merge_state_node)
     graph.add_node("completeness_check", completeness_check_node)
+    graph.add_node("deterministic_validation", deterministic_validation_node)
     graph.add_node("duplicate_check", duplicate_check_node)
     graph.add_node("compose_reply", compose_reply_node)
 
@@ -292,14 +343,17 @@ def build_graph():
             "log": "log_complaint",
             "edit": "edit_complaint",
             "extract": "extract_document",
+            "qa": "qa",
         },
     )
 
     graph.add_edge("log_complaint", "merge_state")
     graph.add_edge("edit_complaint", "merge_state")
     graph.add_edge("extract_document", "merge_state")
+    graph.add_edge("qa", END)
 
-    graph.add_edge("merge_state", "completeness_check")
+    graph.add_edge("merge_state", "deterministic_validation")
+    graph.add_edge("deterministic_validation", "completeness_check")
     graph.add_edge("completeness_check", "duplicate_check")
     graph.add_edge("duplicate_check", "compose_reply")
     graph.add_edge("compose_reply", END)
