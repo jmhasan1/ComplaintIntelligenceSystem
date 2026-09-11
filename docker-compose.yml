@@ -1,16 +1,16 @@
 services:
   postgres:
     image: postgres:16
-    container_name: MeddiQA-postgres
+    container_name: aivoa-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: MeddiQA
-      POSTGRES_USER: MeddiQA
-      POSTGRES_PASSWORD: MeddiQA
+      POSTGRES_DB: aivoa
+      POSTGRES_USER: aivoa
+      POSTGRES_PASSWORD: aivoa
     ports:
       - "5432:5432"
     volumes:
-      - MeddiQA_pgdata:/var/lib/postgresql/data
+      - aivoa_pgdata:/var/lib/postgresql/data
 
 volumes:
-  MeddiQA_pgdata:
+  aivoa_pgdata:

@@ -19,7 +19,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://MeddiQA:MeddiQA@localhost:5432/MeddiQA",
+    "postgresql+psycopg://aivoa:aivoa@localhost:5432/aivoa",
 )
 
 # Render JSON in PostgreSQL as JSONB. A SQLite URL can still be used for quick

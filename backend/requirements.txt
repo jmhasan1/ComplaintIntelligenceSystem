@@ -13,7 +13,7 @@
 # psycopg[binary]==3.2.3
 
 # ─────────────────────────────────────────────
-# meddiQA Complaint Intelligence - Backend
+# aivoa Complaint Intelligence - Backend
 # ─────────────────────────────────────────────
 
 # API

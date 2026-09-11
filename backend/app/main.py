@@ -138,9 +138,9 @@ async def get_form(session_id: str):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "MeddiQA-complaint-intelligence"}
+    return {"status": "ok", "service": "aivoa-complaint-intelligence"}
 
 
 @app.get("/api/health")
 async def api_health():
-    return {"status": "ok", "service": "MeddiQA-complaint-intelligence"}
+    return {"status": "ok", "service": "aivoa-complaint-intelligence"}

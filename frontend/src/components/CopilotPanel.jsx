@@ -66,7 +66,7 @@ export default function CopilotPanel() {
   return (
     <div className="copilot-panel">
       <div className="copilot-header">
-        <h2>🧪 MeddiQA Copilot</h2>
+        <h2>🧪 AIVOA Copilot</h2>
         <p>Drop complaint files or paste text below.</p>
       </div>
 
