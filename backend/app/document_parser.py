@@ -10,7 +10,9 @@ here; it's explicitly not what's being evaluated.
 
 import email
 from io import BytesIO
+from pathlib import Path
 from pypdf import PdfReader
+from docx import Document
 
 
 def extract_text_from_upload(filename: str, content: bytes) -> str:
@@ -19,6 +21,17 @@ def extract_text_from_upload(filename: str, content: bytes) -> str:
     if lower.endswith(".pdf"):
         reader = PdfReader(BytesIO(content))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    if lower.endswith(".docx"):
+        document = Document(BytesIO(content))
+        paragraphs = [p.text for p in document.paragraphs if p.text.strip()]
+        table_rows = []
+        for table in document.tables:
+            for row in table.rows:
+                cells = [cell.text.strip() for cell in row.cells]
+                if any(cells):
+                    table_rows.append(" | ".join(cells))
+        return "\n".join(paragraphs + table_rows)
 
     if lower.endswith(".eml"):
         msg = email.message_from_bytes(content)
@@ -30,7 +43,7 @@ def extract_text_from_upload(filename: str, content: bytes) -> str:
             return "\n".join(parts)
         return msg.get_payload(decode=True).decode(errors="ignore")
 
-    # .txt, .docx-as-text fallback, etc.
+    # .txt and other plain-text uploads.
     try:
         return content.decode("utf-8")
     except UnicodeDecodeError:

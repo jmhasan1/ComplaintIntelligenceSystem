@@ -11,10 +11,10 @@ const initialState = {
   affected_quantity: null,
   manufacturing_date: null,
   expiry_date: null,
-  originating_site_block: null,
-  impacted_npm: null,
-  complaint_category: null,
+  complaint_type: null,
+  complaint_date: null,
   complaint_description: null,
+  priority: null,
   risk_assessment: {
     severity: null,
     suggested_next_action: null,
@@ -23,6 +23,12 @@ const initialState = {
   },
   duplicate_flag: null,
   duplicate_notes: null,
+  missing_fields: [],
+  completeness_score: 0,
+  field_confidence: {},
+  validation_errors: [],
+  review_status: 'draft',
+  review_required: false,
   // UI-only, not sent to backend
   lastUpdatedFields: [],
 }
@@ -43,8 +49,12 @@ const formSlice = createSlice({
     resetForm() {
       return initialState
     },
+    setReviewState(state, action) {
+      state.review_status = action.payload.review_status
+      state.review_required = action.payload.review_required
+    },
   },
 })
 
-export const { setFormState, resetForm } = formSlice.actions
+export const { setFormState, resetForm, setReviewState } = formSlice.actions
 export default formSlice.reducer

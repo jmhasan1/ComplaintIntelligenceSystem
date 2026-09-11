@@ -77,7 +77,12 @@ def load_state(session_id: str, state_model):
         row = db.get(ComplaintSession, session_id)
         if row is None:
             return state_model()
-        return state_model.model_validate(row.state)
+        payload = dict(row.state or {})
+        # Backward compatibility for drafts created before the reference-form
+        # field rename. New records use complaint_type directly.
+        if not payload.get("complaint_type") and payload.get("complaint_category"):
+            payload["complaint_type"] = payload["complaint_category"]
+        return state_model.model_validate(payload)
 
 
 def save_state(session_id: str, state) -> None:
@@ -91,6 +96,15 @@ def save_state(session_id: str, state) -> None:
             row.state = payload
             row.updated_at = datetime.now(timezone.utc)
         db.commit()
+
+
+def reset_state(session_id: str) -> None:
+    """Clear the draft complaint for a session without deleting committed records."""
+    with SessionLocal() as db:
+        row = db.get(ComplaintSession, session_id)
+        if row is not None:
+            db.delete(row)
+            db.commit()
 
 
 def commit_state(session_id: str, state, complaint_id: str) -> None:

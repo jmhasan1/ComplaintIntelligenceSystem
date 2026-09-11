@@ -42,7 +42,7 @@ export default function CopilotPanel() {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    dispatch(addUserFileMessage({ name: file.name, type: 'PDF Document' }))
+    dispatch(addUserFileMessage({ name: file.name, type: file.name.split('.').pop()?.toUpperCase() + ' Document' }))
     dispatch(setProcessing(true))
     try {
       const res = await uploadComplaintDocument(sessionId, file)
@@ -96,7 +96,7 @@ export default function CopilotPanel() {
         <button
           className="attach-btn"
           onClick={() => fileInputRef.current?.click()}
-          title="Upload complaint PDF/email"
+          title="Upload complaint PDF/DOCX/email"
         >
           📎
         </button>
@@ -104,7 +104,7 @@ export default function CopilotPanel() {
           type="file"
           ref={fileInputRef}
           style={{ display: 'none' }}
-          accept=".pdf,.txt,.eml"
+          accept=".pdf,.docx,.txt,.eml"
           onChange={handleFileChange}
         />
         <input

@@ -1,11 +1,10 @@
-import { useSelector } from 'react-redux'
+import { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import RiskAssessment from './RiskAssessment'
+import { commitComplaint, markComplaintReviewed, resetComplaint } from '../api/client'
+import { resetForm, setReviewState } from '../store/formSlice'
+import { addAssistantMessage } from '../store/copilotSlice'
 
-// Assignment rule: "you must not fill the left form manually; instead, use
-// the AI assistant on the right." Fields are therefore read-only inputs
-// (not disabled -- disabled inputs often can't be styled/selected for
-// copy-paste, which QA reviewers may want to do -- readOnly keeps text
-// selectable while still blocking manual edits).
 function Field({ label, value, highlighted }) {
   return (
     <div className="field">
@@ -22,12 +21,62 @@ function Field({ label, value, highlighted }) {
 }
 
 export default function ComplaintForm() {
+  const dispatch = useDispatch()
   const form = useSelector((s) => s.form)
-  // Match the reference demo: the record becomes ready once the core
-  // complaint identity/description exists. Completeness is surfaced as a
-  // warning rather than silently blocking the demo workflow.
+  const sessionId = useSelector((s) => s.copilot.sessionId)
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
   const isReadyToCommit = Boolean(form.product_name && form.complaint_description)
+  const canMarkReviewed = isReadyToCommit && !(form.validation_errors?.length > 0)
+  const isReviewed = form.review_status === 'reviewed'
   const changed = new Set(form.lastUpdatedFields || [])
+
+  const handleSave = async () => {
+    if (!sessionId || !isReadyToCommit || !isReviewed || saving) return
+    setSaving(true)
+    try {
+      const res = await commitComplaint(sessionId)
+      dispatch(resetForm())
+      dispatch(addAssistantMessage(`Complaint ${res.complaint_id} committed to the QMS ledger. Ready for the next complaint.`))
+    } catch (err) {
+      console.error(err)
+      dispatch(addAssistantMessage('Could not save the complaint. Please review the form and try again.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleMarkReviewed = async () => {
+    if (!sessionId || !canMarkReviewed || reviewing || isReviewed) return
+    setReviewing(true)
+    try {
+      await markComplaintReviewed(sessionId)
+      // Refresh the local state through the existing form response shape.
+      dispatch(setReviewState({ review_status: 'reviewed', review_required: false }))
+      dispatch(addAssistantMessage('Human review completed. The complaint is ready to save.'))
+    } catch (err) {
+      console.error(err)
+      dispatch(addAssistantMessage(err.response?.data?.detail || 'Could not mark the complaint as reviewed.'))
+    } finally {
+      setReviewing(false)
+    }
+  }
+
+  const handleReset = async () => {
+    if (!sessionId || resetting) return
+    setResetting(true)
+    try {
+      await resetComplaint(sessionId)
+      dispatch(resetForm())
+      dispatch(addAssistantMessage('Form reset. Ready for a new complaint.'))
+    } catch (err) {
+      console.error(err)
+      dispatch(addAssistantMessage('Could not reset the complaint session.'))
+    } finally {
+      setResetting(false)
+    }
+  }
 
   return (
     <div className="complaint-form">
@@ -36,8 +85,8 @@ export default function ComplaintForm() {
           <h1>Log Customer Complaint</h1>
           <p className="subtitle">API &amp; FDF Quality Assurance Module</p>
         </div>
-        <span className={`status-badge ${isReadyToCommit ? 'ready' : 'pending'}`}>
-          {isReadyToCommit ? 'Ready to Commit' : 'Pending Triage'}
+        <span className={`status-badge ${isReviewed ? 'ready' : isReadyToCommit ? 'review' : 'pending'}`}>
+          {isReviewed ? 'Ready to Save' : isReadyToCommit ? 'Review Required' : 'Pending Triage'}
         </span>
       </div>
 
@@ -49,9 +98,7 @@ export default function ComplaintForm() {
       {form.completeness_score > 0 && (
         <div className="completeness-banner">
           <strong>Complaint completeness:</strong> {Math.round(form.completeness_score * 100)}%
-          {form.missing_fields?.length > 0 && (
-            <> · Missing: {form.missing_fields.join(', ')}</>
-          )}
+          {form.missing_fields?.length > 0 && <> · Missing: {form.missing_fields.join(', ')}</>}
         </div>
       )}
 
@@ -80,20 +127,13 @@ export default function ComplaintForm() {
       </section>
 
       <section>
-        <h2>3. Facility &amp; Material Impact</h2>
+        <h2>3. Complaint Details</h2>
         <div className="field-row">
-          <Field label="Originating Site Block" value={form.originating_site_block} highlighted={changed.has('originating_site_block')} />
-          <Field label="Impacted Non-Product Materials (NPM)" value={form.impacted_npm} highlighted={changed.has('impacted_npm')} />
-        </div>
-      </section>
-
-      <section>
-        <h2>4. Defect Analysis</h2>
-        <div className="field-row">
-          <Field label="Complaint Category" value={form.complaint_category} highlighted={changed.has('complaint_category')} />
+          <Field label="Complaint Type" value={form.complaint_type} highlighted={changed.has('complaint_type')} />
+          <Field label="Complaint Date" value={form.complaint_date} highlighted={changed.has('complaint_date')} />
         </div>
         <div className="field">
-          <label>Complaint Description</label>
+          <label>Detailed Complaint Description</label>
           <textarea
             readOnly
             value={form.complaint_description ?? ''}
@@ -103,7 +143,37 @@ export default function ComplaintForm() {
         </div>
       </section>
 
-      <RiskAssessment risk={form.risk_assessment} changed={changed} />
+      <RiskAssessment risk={form.risk_assessment} priority={form.priority} fieldConfidence={form.field_confidence} changed={changed} />
+
+      {form.validation_errors?.length > 0 && (
+        <div className="validation-banner">
+          <strong>Validation requires attention:</strong>
+          <ul>
+            {form.validation_errors.map((error) => <li key={error}>{error}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div className={`review-banner ${isReviewed ? 'reviewed' : ''}`}>
+        <div>
+          <strong>{isReviewed ? '✓ Human Review Complete' : 'Human Review Required'}</strong>
+          <span>{isReviewed ? 'This complaint is ready to save.' : 'Review the AI-extracted fields and recommendations before saving.'}</span>
+        </div>
+        {!isReviewed && (
+          <button className="review-btn" onClick={handleMarkReviewed} disabled={!canMarkReviewed || reviewing}>
+            {reviewing ? 'Reviewing...' : 'Mark Reviewed'}
+          </button>
+        )}
+      </div>
+
+      <div className="form-actions">
+        <button className="reset-btn" onClick={handleReset} disabled={resetting}>
+          {resetting ? 'Resetting...' : '↺ Reset Form'}
+        </button>
+        <button className="commit-btn" onClick={handleSave} disabled={!isReadyToCommit || !isReviewed || saving}>
+          {saving ? 'Saving...' : 'Save Complaint'}
+        </button>
+      </div>
     </div>
   )
 }

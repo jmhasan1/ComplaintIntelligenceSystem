@@ -11,7 +11,7 @@ product name, dates, or risk assessment.
 """
 
 from __future__ import annotations
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from pydantic import BaseModel, Field
 
 
@@ -42,13 +42,13 @@ class ComplaintState(BaseModel):
     manufacturing_date: Optional[str] = None
     expiry_date: Optional[str] = None
 
-    # 3. Facility & material impact
-    originating_site_block: Optional[str] = None
-    impacted_npm: Optional[str] = None  # Non-Product Materials
-
-    # 4. Defect analysis
-    complaint_category: Optional[str] = None
+    # 3. Complaint details
+    complaint_type: Optional[str] = None
+    complaint_date: Optional[str] = None
     complaint_description: Optional[str] = None
+
+    # Initial assessment & priority
+    priority: Optional[str] = None
 
     # AI Copilot risk assessment
     risk_assessment: RiskAssessment = Field(default_factory=RiskAssessment)
@@ -59,12 +59,18 @@ class ComplaintState(BaseModel):
     missing_fields: List[str] = Field(default_factory=list)
     completeness_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
+    # AI quality / human review metadata
+    field_confidence: Dict[str, float] = Field(default_factory=dict)
+    validation_errors: List[str] = Field(default_factory=list)
+    review_status: Literal["draft", "needs_review", "reviewed"] = "draft"
+    review_required: bool = False
+
     def is_empty(self) -> bool:
         complaint_fields = (
             "complaint_source", "customer_name", "product_name",
             "product_strength", "batch_number", "affected_quantity",
-            "manufacturing_date", "expiry_date", "originating_site_block",
-            "impacted_npm", "complaint_category", "complaint_description",
+            "manufacturing_date", "expiry_date", "complaint_type",
+            "complaint_date", "complaint_description",
         )
         return all(getattr(self, field) is None for field in complaint_fields)
 
@@ -83,18 +89,19 @@ class ComplaintStateUpdate(BaseModel):
     affected_quantity: Optional[str] = None
     manufacturing_date: Optional[str] = None
     expiry_date: Optional[str] = None
-    originating_site_block: Optional[str] = None
-    impacted_npm: Optional[str] = None
-    complaint_category: Optional[str] = None
+    complaint_type: Optional[str] = None
+    complaint_date: Optional[str] = None
     complaint_description: Optional[str] = None
+    priority: Optional[str] = None
 
     severity: Optional[str] = None
     suggested_next_action: Optional[str] = None
     initial_risk_assessment: Optional[str] = None
     capa_recommendation: Optional[str] = None
+    field_confidence: Optional[Dict[str, float]] = None
 
     def applied_field_names(self) -> List[str]:
-        return [k for k, v in self.model_dump().items() if v is not None]
+        return [k for k, v in self.model_dump().items() if v is not None and k != "field_confidence"]
 
 
 class ChatMessage(BaseModel):
@@ -114,4 +121,4 @@ class ChatResponse(BaseModel):
     reply: str
     form_state: ComplaintState
     updated_fields: List[str] = Field(default_factory=list)
-    intent: str  # "log" | "edit" | "extract"
+    intent: str  # "log" | "edit" | "extract" | "qa"

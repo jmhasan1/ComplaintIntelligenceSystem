@@ -1,38 +1,16 @@
-import { useDispatch, useSelector } from 'react-redux'
-import { useState } from 'react'
-import { commitComplaint } from '../api/client'
-import { resetForm } from '../store/formSlice'
-import { addAssistantMessage } from '../store/copilotSlice'
-
-export default function RiskAssessment({ risk, changed }) {
-  const dispatch = useDispatch()
-  const sessionId = useSelector((s) => s.copilot.sessionId)
-  const [committing, setCommitting] = useState(false)
-
-  const handleCommit = async () => {
-    if (!sessionId) return
-    setCommitting(true)
-    try {
-      const res = await commitComplaint(sessionId)
-      dispatch(resetForm())
-      dispatch(
-        addAssistantMessage(
-          `Complaint ${res.complaint_id} committed to the QMS ledger. Ready for the next complaint.`
-        )
-      )
-    } finally {
-      setCommitting(false)
-    }
-  }
+export default function RiskAssessment({ risk, priority, fieldConfidence = {}, changed }) {
+  const confidenceEntries = Object.entries(fieldConfidence).filter(
+    ([, value]) => typeof value === 'number' && Number.isFinite(value)
+  )
 
   return (
     <section className="risk-assessment">
       <h2>
-        <span className="shield-icon">🛡</span> AI Copilot Risk Assessment
+        <span className="shield-icon">🛡</span> Initial Assessment &amp; Priority
       </h2>
       <div className="field-row">
         <div className="field">
-          <label>Severity (Suggested)</label>
+          <label>Initial Severity</label>
           <input
             readOnly
             value={risk?.severity ?? ''}
@@ -41,15 +19,26 @@ export default function RiskAssessment({ risk, changed }) {
           />
         </div>
         <div className="field">
-          <label>Suggested Next Action</label>
+          <label>Priority</label>
           <input
             readOnly
-            value={risk?.suggested_next_action ?? ''}
-            placeholder="Awaiting AI recommendation..."
-            className={changed.has('suggested_next_action') ? 'field-highlighted' : ''}
+            value={priority ?? ''}
+            placeholder="Awaiting AI prioritization..."
+            className={changed.has('priority') ? 'field-highlighted' : ''}
           />
         </div>
       </div>
+
+      <div className="field">
+        <label>Suggested Next Action</label>
+        <input
+          readOnly
+          value={risk?.suggested_next_action ?? ''}
+          placeholder="Awaiting AI recommendation..."
+          className={changed.has('suggested_next_action') ? 'field-highlighted' : ''}
+        />
+      </div>
+
       <div className="field">
         <label>Initial Risk Assessment</label>
         <textarea
@@ -59,6 +48,7 @@ export default function RiskAssessment({ risk, changed }) {
           className={changed.has('initial_risk_assessment') ? 'field-highlighted' : ''}
         />
       </div>
+
       {risk?.capa_recommendation && (
         <div className="field">
           <label>CAPA Recommendation (bonus)</label>
@@ -70,9 +60,20 @@ export default function RiskAssessment({ risk, changed }) {
         </div>
       )}
 
-      <button className="commit-btn" onClick={handleCommit} disabled={committing}>
-        {committing ? 'Committing...' : 'Commit to QMS Ledger'}
-      </button>
+      {confidenceEntries.length > 0 && (
+        <div className="confidence-panel">
+          <div className="confidence-title">AI Extraction Confidence</div>
+          <div className="confidence-grid">
+            {confidenceEntries.map(([field, score]) => (
+              <div className="confidence-item" key={field}>
+                <span>{field.replaceAll('_', ' ')}</span>
+                <strong>{Math.round(score * 100)}%</strong>
+              </div>
+            ))}
+          </div>
+          <small>Confidence is an AI estimate and should be verified during human review.</small>
+        </div>
+      )}
     </section>
   )
 }

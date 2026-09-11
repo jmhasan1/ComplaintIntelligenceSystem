@@ -24,6 +24,11 @@ export async function uploadComplaintDocument(sessionId, file) {
   return data
 }
 
+export async function markComplaintReviewed(sessionId) {
+  const { data } = await api.post(`/api/review/${sessionId}`)
+  return data
+}
+
 export async function commitComplaint(sessionId) {
   const { data } = await api.post(`/api/commit/${sessionId}`)
   return data
@@ -33,3 +38,10 @@ export async function fetchForm(sessionId) {
   const { data } = await api.get(`/api/form/${sessionId}`)
   return data
 }
+
+
+export async function resetComplaint(sessionId) {
+  const { data } = await api.post(`/api/reset/${sessionId}`)
+  return data
+}
+
